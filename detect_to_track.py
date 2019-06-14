@@ -13,7 +13,7 @@ from tools.utils import non_max_suppression
 from tools.perspective import HEIGHT, WIDTH
 from tools.create_matrix import create_birdeye
 
-from yolov3.detection_2 import YoloPerson as Yolo
+from yolov3.detection_2 import Yolo
 
 detector_types = ['hog', 'yolov3']
 trackers_types = ['centroid', 'sort', 'open']
