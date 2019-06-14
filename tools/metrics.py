@@ -46,14 +46,14 @@ def evaluation(gt_dir, pred_dir, skip=False):
     frame_count += len(fp_file)
     for file in fp_file:
         file = os.path.join(pred_dir, file)
-        rects = read_labels(file)
+        rects = read_labels(file, skip)
         fp += len(rects)
 
     fn_file = [item for item in list(list_gt) if item not in list_pred]
     frame_count += len(fn_file)
     for file in fn_file:
         file = os.path.join(gt_dir, file)
-        rects = read_labels(file)
+        rects = read_labels(file, skip)
         fn += len(rects)
         object_count += len(rects)
 
@@ -64,10 +64,10 @@ def evaluation(gt_dir, pred_dir, skip=False):
         file_gt = os.path.join(gt_dir, file)
         file_pred = os.path.join(pred_dir, file)
 
-        rects_gt = read_labels(file_gt)
+        rects_gt = read_labels(file_gt, skip)
         object_count += len(rects_gt)
 
-        rects_pred = read_labels(file_pred)
+        rects_pred = read_labels(file_pred, skip)
 
         if len(rects_gt) == 0:
             fp += len(rects_pred)

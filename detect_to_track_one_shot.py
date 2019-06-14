@@ -34,7 +34,7 @@ def main():
     show_video = True  # if show the video
     show_trace = True  # if show the trace of human on hte ground
 
-    top_view = True  # if show and save the camera view from above
+    top_view = False  # if show and save the camera view from above
 
     input = "data/video/vid2.mp4"
     # input = "data/video/TownCentreXVID.avi"
@@ -56,9 +56,11 @@ def main():
     name = os.path.splitext(name)[0]
     dir_name = os.path.dirname(input)
 
-    matrix_file = 'data/config/matrix.npy'
-    matrix = np.load(matrix_file)
-    if top_view and True:
+    if top_view:
+        matrix_file = 'data/config/matrix.npy'
+        matrix = np.load(matrix_file)
+
+    if top_view and False:
         matrix = create_birdeye(input)
         if matrix is None:
             print('impossible to create top view')

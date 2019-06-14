@@ -169,6 +169,7 @@ def main():
             file_name = os.path.join(output_dir, name + '.txt')
 
             with open(file_name, "w+") as f:
+                f.write('{}\n'.format(len(rects)))
                 for rect in rects:
                     xA, yA, xB, yB = rect
                     f.write(str(int(xA)) + ' ' + str(int(yA)) + ' ' + str(int(xB)) + ' ' + str(int(yB)) + "\n")
@@ -185,7 +186,7 @@ def main():
         count += 1
 
     if save_evaluation:
-        precision, recall, f1 = evaluation(label_dir, output_dir)
+        precision, recall, f1 = evaluation(label_dir, output_dir, skip=True)
 
         print('precision: {}'.format(precision))
         print('recall: {}'.format(recall))
