@@ -9,10 +9,9 @@ import numpy as np
 import pandas as pd
 
 from trackers.Tracker import OpenTracker
-from yolov3.detection_2 import Yolo
+#  from yolov3.detection_2 import Yolo
 from tools.utils import non_max_suppression
 from tools.metrics import evaluation
-
 
 detector_types = ['hog', 'yolov3', 'yolov3Conf']
 trackers_types = ['centroid', 'sort', 'open']
@@ -43,6 +42,11 @@ def main():
     parser.add_argument('--tracker',
                         action='store_true',
                         help='combination of detection and tracker to detection task')
+
+    parser.add_argument('--skip',
+                        default=1,
+                        type=int,
+                        help='number of frame to skip after detection')
 
     parser.add_argument('--show',
                         action='store_true',
@@ -98,11 +102,16 @@ def main():
     save_evaluation = args.save
     show_video = args.show
 
+    skip = args.skip
+    if skip < 1:
+        raise argparse.ArgumentTypeError("%d is an invalid positive int value" % skip)
+
     print('input: {}'.format(input))
     print('label dir:', label_dir)
     print('output dir: ', output_dir)
     print('detector: {}'.format(detector_name))
     print('tracker: {}'.format(withTracker))
+    print('skip frame: {}'.format(skip))
     print('save_evaluation: {}'.format(save_evaluation))
     print('show_video: {}'.format(show_video))
 
@@ -122,7 +131,11 @@ def main():
 
     tracker = None
     if withTracker:
-        tracker = OpenTracker(tracker='csrt', reinit=True, max_disappeared=20, th=0.5, show_ghost=10)
+        if skip > 10:
+            disap = int(skip * 1.5)
+            tracker = OpenTracker(tracker='csrt', reinit=True, max_disappeared=disap, th=0.5, show_ghost=skip)
+        else:
+            tracker = OpenTracker(tracker='csrt', reinit=True, max_disappeared=20, th=0.5, show_ghost=10)
 
     trackable_objects = {}
 
@@ -138,14 +151,17 @@ def main():
         if not r:
             break
 
-        if detector_name == 'hog':
-            # frame = cv2.resize(frame, (640, 480))  # Downscale to improve frame rate
-            gray_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)  # HOG needs a grayscale image
-            rects, weights = detector.detectMultiScale(gray_frame)
-            rects = np.array([[x, y, x + w, y + h] for i, (x, y, w, h) in enumerate(rects) if weights[i] > 0.7])
-            rects = non_max_suppression(rects, overlap_thresh=0.65)
-        else:
-            rects = detector.detect_image(frame)
+        rects = []
+        if count % skip == 0:
+            if detector_name == 'hog':
+                # frame = cv2.resize(frame, (640, 480))  # Downscale to improve frame rate
+                gray_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)  # HOG needs a grayscale image
+                rects, weights = detector.detectMultiScale(gray_frame)
+                rects = np.array([[x, y, x + w, y + h] for i, (x, y, w, h) in enumerate(rects) if weights[i] > 0.7])
+                rects = non_max_suppression(rects, overlap_thresh=0.65)
+            else:
+                rects = detector.detect_image(frame)
+
 
         if withTracker:
             objects = tracker.update(frame, rects)
@@ -162,7 +178,7 @@ def main():
             })
 
             if show_video:
-                cv2.rectangle(frame, (xA, yA), (xB, yB), (0,255, 0), 2)
+                cv2.rectangle(frame, (xA, yA), (xB, yB), (0, 255, 0), 2)
 
         if save_evaluation and len(rects) > 0:
             name = '{:03d}'.format(count)
@@ -188,11 +204,12 @@ def main():
     if save_evaluation:
         precision, recall, f1 = evaluation(label_dir, output_dir, skip=True)
 
-        print('precision: {}'.format(precision))
-        print('recall: {}'.format(recall))
-        print('f1: {}'.format(f1))
+        #  print('precision: {}'.format(precision))
+        #  print('recall: {}'.format(recall))
+        #  print('f1: {}'.format(f1))
 
     cap.release()
+
 
 if __name__ == '__main__':
     main()

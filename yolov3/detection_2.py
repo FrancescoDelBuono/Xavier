@@ -78,7 +78,7 @@ class Yolo():
 
 
             for bbox in det:
-                if bbox[6] == 0 and bbox[4] > 0.70:
+                if bbox[6] == 0 and bbox[4] > 0.80:
                     tl = bbox[:2]
                     br = bbox[2:4]
                     # w = int(bbox[2] - bbox[0])

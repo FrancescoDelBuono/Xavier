@@ -13,7 +13,7 @@ from tools.utils import non_max_suppression
 from tools.perspective import HEIGHT, WIDTH
 from tools.create_matrix import create_birdeye
 
-from yolov3.detection_2 import Yolo
+# from yolov3.detection_2 import Yolo
 
 
 detector_types = ['hog', 'yolov3']
@@ -34,7 +34,7 @@ def main():
     show_video = True  # if show the video
     show_trace = True  # if show the trace of human on hte ground
 
-    top_view = False  # if show and save the camera view from above
+    top_view = True  # if show and save the camera view from above
 
     input = "data/video/vid2.mp4"
     # input = "data/video/TownCentreXVID.avi"
