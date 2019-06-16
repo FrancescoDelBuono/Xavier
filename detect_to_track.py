@@ -33,9 +33,10 @@ def main():
                         default='open',
                         help='tracker to use [open, sort, centroid]')
 
-    # parser.add_argument('--show',
-    #                     action='store_true',
-    #                     help='if show the video in output')
+    parser.add_argument('--skip',
+                        default=1,
+                        type=int,
+                        help='number of frame to skip after detection')
 
     parser.add_argument('--save',
                         action='store_true',
@@ -102,6 +103,10 @@ def main():
     name = os.path.splitext(name)[0]
     dir_name = os.path.dirname(input)
 
+    skip = args.skip
+    if skip < 1:
+        raise argparse.ArgumentTypeError("%d is an invalid positive int value" % skip)
+
     detector = None
     if detector_name == 'hog':
         detector = cv2.HOGDescriptor()
@@ -120,13 +125,21 @@ def main():
         for d in detector_types:
             print(d)
 
+    if tracker_name != 'open' and skip > 1:
+        print('impossible skip frame without OpenTracker')
+        return
+
     tracker = None
     if tracker_name == 'sort':
         tracker = Sort()
     elif tracker_name == 'centroid':
         tracker = CentroidTracker(maxDisappeared=10)
     elif tracker_name == 'open':
-        tracker = OpenTracker(tracker='csrt', reinit=True, max_disappeared=20, th=0.5, show_ghost=10)
+        if skip > 10:
+            disap = int(skip * 1.5)
+            tracker = OpenTracker(tracker='csrt', reinit=True, max_disappeared=disap, th=0.5, show_ghost=skip)
+        else:
+            tracker = OpenTracker(tracker='csrt', reinit=True, max_disappeared=20, th=0.5, show_ghost=10)
     else:
         print('Incorrect tracker name')
         print('Available trackers are:')
@@ -172,14 +185,15 @@ def main():
             background = cv2.warpPerspective(background, matrix, (w, h), cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
 
         # Detection
-        if detector_name == 'yolov3':
-            rects = detector.detect_image(frame)
-        else:
-            # frame = cv2.resize(frame, (640, 480))  # Downscale to improve frame rate
-            gray_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)  # HOG needs a grayscale image
-            rects, weights = detector.detectMultiScale(gray_frame)
-            rects = np.array([[x, y, x + w, y + h] for i, (x, y, w, h) in enumerate(rects) if weights[i] > 0.7])
-            rects = non_max_suppression(rects, overlap_thresh=0.65)
+        if count % skip == 0:
+            if detector_name == 'yolov3':
+                rects = detector.detect_image(frame)
+            else:
+                # frame = cv2.resize(frame, (640, 480))  # Downscale to improve frame rate
+                gray_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)  # HOG needs a grayscale image
+                rects, weights = detector.detectMultiScale(gray_frame)
+                rects = np.array([[x, y, x + w, y + h] for i, (x, y, w, h) in enumerate(rects) if weights[i] > 0.7])
+                rects = non_max_suppression(rects, overlap_thresh=0.65)
 
         # Tracking
         objects = None

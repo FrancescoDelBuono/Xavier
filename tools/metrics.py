@@ -207,7 +207,7 @@ def match_pred_gt(rects_pred, rects_gt):
     elif len(rects_pred) == 0:
         return []
 
-    print('create matrix')
+    # print('create matrix')
     H = len(rects_pred)
     W = len(rects_gt)
     D = np.zeros((H, W))
