@@ -89,32 +89,32 @@ def evaluation(gt_dir, pred_dir, skip=False):
         usedRows = set()  # used predictions
         usedCols = set()  #  used labels
 
-        rows = D.min(axis=1).argsort()
-        cols = D.argmin(axis=1)[rows]
-
-        for (row, col) in zip(rows, cols):
-            if D[row, col] < THRESHOLD:
-                continue
-            if row in usedRows or col in usedCols:
-                continue
-            # print('find match', row, rects_pred[row], col, rects_gt[col])
-            tp += 1
-
-            usedRows.add(row)
-            usedCols.add(col)
-
-        # for row in range(H):
-        #     rank = D[row].argsort()[::-1]
-        #     for col in rank:
-        #         if D[row, col] < THRESHOLD:
-        #             continue
-        #         if row in usedRows or col in usedCols:
-        #             continue
-        #         # print('find match', row, rects_pred[row], col, rects_gt[col])
-        #         tp += 1
+        # rows = D.min(axis=1).argsort()
+        # cols = D.argmin(axis=1)[rows]
         #
-        #         usedRows.add(row)
-        #         usedCols.add(col)
+        # for (row, col) in zip(rows, cols):
+        #     if D[row, col] < THRESHOLD:
+        #         continue
+        #     if row in usedRows or col in usedCols:
+        #         continue
+        #     # print('find match', row, rects_pred[row], col, rects_gt[col])
+        #     tp += 1
+        #
+        #     usedRows.add(row)
+        #     usedCols.add(col)
+
+        for row in range(H):
+            rank = D[row].argsort()[::-1]
+            for col in rank:
+                if D[row, col] < THRESHOLD:
+                    continue
+                if row in usedRows or col in usedCols:
+                    continue
+                # print('find match', row, rects_pred[row], col, rects_gt[col])
+                tp += 1
+
+                usedRows.add(row)
+                usedCols.add(col)
 
         unusedRows = set(range(0, D.shape[0])).difference(usedRows)  # unused prediction are false positive
         unusedCols = set(range(0, D.shape[1])).difference(usedCols)  #  unused labels are false negative
@@ -161,32 +161,32 @@ def evaluation_2bbox(rects_pred, rects_gt):
         usedRows = set()  # used predictions
         usedCols = set()  #  used labels
 
-        rows = D.min(axis=1).argsort()
-        cols = D.argmin(axis=1)[rows]
-
-        for (row, col) in zip(rows, cols):
-            if D[row, col] < THRESHOLD:
-                continue
-            if row in usedRows or col in usedCols:
-                continue
-            # print('find match', row, rects_pred[row], col, rects_gt[col])
-            tp += 1
-
-            usedRows.add(row)
-            usedCols.add(col)
-
-        # for row in range(H):
-        #     rank = D[row].argsort()[::-1]
-        #     for col in rank:
-        #         if D[row, col] < THRESHOLD:
-        #             continue
-        #         if row in usedRows or col in usedCols:
-        #             continue
-        #         # print('find match', row, rects_pred[row], col, rects_gt[col])
-        #         tp += 1
+        # rows = D.min(axis=1).argsort()
+        # cols = D.argmin(axis=1)[rows]
         #
-        #         usedRows.add(row)
-        #         usedCols.add(col)
+        # for (row, col) in zip(rows, cols):
+        #     if D[row, col] < THRESHOLD:
+        #         continue
+        #     if row in usedRows or col in usedCols:
+        #         continue
+        #     # print('find match', row, rects_pred[row], col, rects_gt[col])
+        #     tp += 1
+        #
+        #     usedRows.add(row)
+        #     usedCols.add(col)
+
+        for row in range(H):
+            rank = D[row].argsort()[::-1]
+            for col in rank:
+                if D[row, col] < THRESHOLD:
+                    continue
+                if row in usedRows or col in usedCols:
+                    continue
+                # print('find match', row, rects_pred[row], col, rects_gt[col])
+                tp += 1
+
+                usedRows.add(row)
+                usedCols.add(col)
 
         unusedRows = set(range(0, D.shape[0])).difference(usedRows)  # unused prediction are false positive
         unusedCols = set(range(0, D.shape[1])).difference(usedCols)  #  unused labels are false negative

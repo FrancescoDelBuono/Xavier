@@ -325,46 +325,46 @@ class OpenTracker:
             usedRows = set()
             usedCols = set()
 
-            rows = D.min(axis=1).argsort()
-            cols = D.argmin(axis=1)[rows]
-
-            for (row, col) in zip(rows, cols):
-                if D[row, col] < self.th:
-                    continue
-                if row in usedRows or col in usedCols:
-                    continue
-                # print('find match', objectIDs[row], col)
-                objectID = objectIDs[row]
-                self.objects[objectID] = input_rects[col]
-                if self.reinit:
-                    xa, ya, xb, yb = input_rects[col]
-                    self.trackers[objectID] = self.createTrackerByName(self.tracker)
-                    self.trackers[objectID].init(frame, (xa, ya, xb - xa, yb - ya))
-
-                self.disappeared[objectID] = 0
-
-                usedRows.add(row)
-                usedCols.add(col)
-
-            # for row in range(H):
-            #     rank = D[row].argsort()[::-1]
-            #     for col in rank:
-            #         if D[row, col] < self.th:
-            #             continue
-            #         if row in usedRows or col in usedCols:
-            #             continue
-            #         # print('find match', objectIDs[row], col)
-            #         objectID = objectIDs[row]
-            #         self.objects[objectID] = input_rects[col]
-            #         if self.reinit:
-            #             xa, ya, xb, yb = input_rects[col]
-            #             self.trackers[objectID] = self.createTrackerByName(self.tracker)
-            #             self.trackers[objectID].init(frame, (xa, ya, xb - xa, yb - ya))
+            # rows = D.min(axis=1).argsort()
+            # cols = D.argmin(axis=1)[rows]
             #
-            #         self.disappeared[objectID] = 0
+            # for (row, col) in zip(rows, cols):
+            #     if D[row, col] < self.th:
+            #         continue
+            #     if row in usedRows or col in usedCols:
+            #         continue
+            #     # print('find match', objectIDs[row], col)
+            #     objectID = objectIDs[row]
+            #     self.objects[objectID] = input_rects[col]
+            #     if self.reinit:
+            #         xa, ya, xb, yb = input_rects[col]
+            #         self.trackers[objectID] = self.createTrackerByName(self.tracker)
+            #         self.trackers[objectID].init(frame, (xa, ya, xb - xa, yb - ya))
             #
-            #         usedRows.add(row)
-            #         usedCols.add(col)
+            #     self.disappeared[objectID] = 0
+            #
+            #     usedRows.add(row)
+            #     usedCols.add(col)
+
+            for row in range(H):
+                rank = D[row].argsort()[::-1]
+                for col in rank:
+                    if D[row, col] < self.th:
+                        continue
+                    if row in usedRows or col in usedCols:
+                        continue
+                    # print('find match', objectIDs[row], col)
+                    objectID = objectIDs[row]
+                    self.objects[objectID] = input_rects[col]
+                    if self.reinit:
+                        xa, ya, xb, yb = input_rects[col]
+                        self.trackers[objectID] = self.createTrackerByName(self.tracker)
+                        self.trackers[objectID].init(frame, (xa, ya, xb - xa, yb - ya))
+
+                    self.disappeared[objectID] = 0
+
+                    usedRows.add(row)
+                    usedCols.add(col)
 
             unusedRows = set(range(0, D.shape[0])).difference(usedRows)
             unusedCols = set(range(0, D.shape[1])).difference(usedCols)
