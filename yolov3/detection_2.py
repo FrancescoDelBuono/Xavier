@@ -1,4 +1,3 @@
-
 from .models import *
 from .utils.utils import *
 from .utils.parse_config import parse_data_cfg
@@ -6,7 +5,7 @@ from .utils.parse_config import parse_data_cfg
 
 class Yolo():
     def __init__(self, weights='yolov3/weights/yolov3.pt',
-                 #data_cfg='yolov3/data/camera.data',
+                 # data_cfg='yolov3/data/camera.data',
                  cfg='yolov3/cfg/yolov3.cfg', img_size=416, conf_thres=0.5,
                  nms_thres=0.4):
         self.device = torch_utils.select_device()
@@ -75,8 +74,6 @@ class Yolo():
 
             det = det.detach().numpy()
 
-
-
             for bbox in det:
                 if bbox[6] == 0 and bbox[4] > 0.80:
                     tl = bbox[:2]
@@ -92,3 +89,35 @@ class Yolo():
             crds = np.array(crds)
 
         return crds
+
+    def detect_image_confidence(self, img):
+
+        # classes = load_classes(parse_data_cfg(data_cfg)['names'])
+        classes = 'person'
+
+        img_trs = self.transform(img, self.img_size)
+
+        img_trs = torch.from_numpy(img_trs).unsqueeze(0).to(self.device)
+        pred, _ = self.model(img_trs)
+        det = non_max_suppression(pred, self.conf_thres, self.nms_thres)[0]
+
+        crds = []
+        confidence = []
+
+        if det is not None and len(det) > 0:
+            # Rescale boxes from 416 to true image size
+            det[:, :4] = scale_coords(img_trs.shape[2:], det[:, :4], img.shape).round()
+
+            det = det.detach().numpy()
+
+            for bbox in det:
+                if bbox[6] == 0:
+                    tl = bbox[:2]
+                    br = bbox[2:4]
+                    crds.append([tl[0], tl[1], br[0], br[1]])
+
+                    confidence.append(bbox[4])
+
+            crds = np.array(crds)
+
+        return crds, confidence

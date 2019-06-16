@@ -64,36 +64,13 @@ def non_max_suppression(boxes, overlap_thresh):
     return boxes[pick].astype("int")
 
 
-def read_labels_old(file):
-    rect = []
-
-    lines = file.readlines()
-
-    if len(lines) > 0:
-        n_object = len(lines) - 1
-    else:
-        n_object = 0
-
-    for j in range(1, n_object + 1):
-        line = lines[j]
-        split = line.split(' ')
-        x1 = int(split[0])
-        y1 = int(split[1])
-        rect.append((x1, y1))
-        x2 = int(split[2])
-        y2 = int(split[3])
-        rect.append((x2, y2))
-
-    return n_object, rect
-
-
 def scan_dir(img_dir, ext=''):
     files = [entry for entry in glob.iglob("{}/**".format(img_dir), recursive=True) if
              os.path.isfile(entry) and entry.endswith(ext)]
     return files
 
 
-def read_labels(file, skip=False):
+def read_labels(file, skip=False, with_confidence=False):
     if not os.path.isfile(file):
         raise ValueError('{} is not a file'.format(file))
 
@@ -104,12 +81,17 @@ def read_labels(file, skip=False):
         lines.pop(0)
 
     rects = []
+    confidence = []
     for line in lines:
         s = line.split()
         rect = [int(x) for x in s]
+        if with_confidence:
+            c = rect.pop(0)
+            confidence.append(c)
         if len(rect) != 4:
             raise ValueError('no rect found')
 
         rects.append(rect)
-
+    if with_confidence:
+        return rects, confidence
     return rects
