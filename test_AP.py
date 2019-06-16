@@ -8,8 +8,7 @@ import argparse
 import numpy as np
 import pandas as pd
 from sklearn.metrics import average_precision_score
-
-# from yolov3.detection_2 import Yolo
+from yolov3.detection_2 import Yolo
 from tools.utils import non_max_suppression, read_labels
 from tools.metrics import match_pred_gt
 
