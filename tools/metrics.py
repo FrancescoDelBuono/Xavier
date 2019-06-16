@@ -207,6 +207,7 @@ def match_pred_gt(rects_pred, rects_gt):
     elif len(rects_pred) == 0:
         return []
 
+    print('create matrix')
     H = len(rects_pred)
     W = len(rects_gt)
     D = np.zeros((H, W))
@@ -217,19 +218,23 @@ def match_pred_gt(rects_pred, rects_gt):
     usedRows = set()  # used predictions
     usedCols = set()  #  used labels
 
-    rows = D.min(axis=1).argsort()
-    cols = D.argmin(axis=1)[rows]
+    # rows = D.min(axis=1).argsort()
+    # cols = D.argmin(axis=1)[rows]
+    #
+    # for (row, col) in zip(rows, cols):
 
-    for (row, col) in zip(rows, cols):
-        if D[row, col] < THRESHOLD:
-            continue
-        if row in usedRows or col in usedCols:
-            continue
+    for row in range(H):
+        rank = D[row].argsort()[::-1]
+        for col in rank:
+            if D[row, col] < THRESHOLD:
+                continue
+            if row in usedRows or col in usedCols:
+                continue
 
-        overlapping[row] = D[row, col]
+            overlapping[row] = D[row, col]
 
-        usedRows.add(row)
-        usedCols.add(col)
+            usedRows.add(row)
+            usedCols.add(col)
 
     return overlapping
 
