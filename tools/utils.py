@@ -7,7 +7,7 @@ def print_objects(frame, objects, show_trace=False):
     pass
 
 
-def non_max_suppression(boxes, overlap_thresh):
+def non_max_suppression(boxes, overlap_thresh, index=False):
     # if there are no boxes, return an empty list
     if len(boxes) == 0:
         return []
@@ -61,6 +61,8 @@ def non_max_suppression(boxes, overlap_thresh):
 
     # return only the bounding boxes that were picked using the
     # integer data type
+    if index:
+        return boxes[pick].astype("int"), pick
     return boxes[pick].astype("int")
 
 

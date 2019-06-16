@@ -131,6 +131,10 @@ def main():
             # rects = non_max_suppression(rects, overlap_thresh=0.65)
 
             rects = np.array([[x, y, x + w, y + h] for (x, y, w, h) in rects])
+            rects, picks = non_max_suppression(rects, overlap_thresh=0.65, index=True)
+            weights = np.asarray(weights)
+            weights = weights[picks]
+
             confidence = [w for w in weights]
 
         else:
