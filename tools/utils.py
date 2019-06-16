@@ -10,6 +10,8 @@ def print_objects(frame, objects, show_trace=False):
 def non_max_suppression(boxes, overlap_thresh, index=False):
     # if there are no boxes, return an empty list
     if len(boxes) == 0:
+        if index:
+            return [], []
         return []
 
     # if the bounding boxes integers, convert them to floats --
@@ -63,6 +65,7 @@ def non_max_suppression(boxes, overlap_thresh, index=False):
     # integer data type
     if index:
         return boxes[pick].astype("int"), pick
+
     return boxes[pick].astype("int")
 
 
