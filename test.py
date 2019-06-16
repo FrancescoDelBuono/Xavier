@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from trackers.Tracker import OpenTracker
-#  from yolov3.detection_2 import Yolo
+from yolov3.detection_2 import Yolo
 from tools.utils import non_max_suppression, read_labels
 from tools.metrics import evaluation, evaluation_2bbox
 
