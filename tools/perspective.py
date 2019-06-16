@@ -5,8 +5,8 @@ import numpy as np
 from scipy.spatial import distance as dist
 
 
-HEIGHT = 480
-WIDTH = 640
+#HEIGHT = 480
+#WIDTH = 640
 
 # video path for the first frame, center, color, frame, boolean True if we are at the first frame
 def bird_eye_view(points, matrix, color, frame):
@@ -98,10 +98,10 @@ def order_points(pts):
     return [tl, tr, br, bl]
 
 
-def create_matrix(points):
+def create_matrix(points,height,width):
     print('matrix creation')
-    view_h = HEIGHT
-    view_w = WIDTH
+    view_h = height
+    view_w = width
     garden_width = 200
     garden_height = garden_width / 1.25
 

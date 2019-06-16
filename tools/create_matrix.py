@@ -69,7 +69,7 @@ def create_birdeye(input):
     if len(points.points) == 4:
         if len(points.points) == 4:
             print('save points')
-            matrix = create_matrix(points.points)
+            matrix = create_matrix(points.points,h,w)
             return matrix
 
     return None
