@@ -4,6 +4,8 @@ from shapely.geometry import box
 
 from tools.utils import read_labels, scan_dir
 
+THRESHOLD = 0.5
+
 
 def IoU(bb_test, bb_gt):
     """
@@ -35,7 +37,6 @@ def evaluation(gt_dir, pred_dir, skip=False):
     iou_tot = 0
     frame_count = 0
     object_count = 0
-    th = 0.5
 
     list_pred = scan_dir(pred_dir, ext='.txt')
     list_pred = [os.path.basename(x) for x in list_pred]
@@ -88,18 +89,32 @@ def evaluation(gt_dir, pred_dir, skip=False):
         usedRows = set()  # used predictions
         usedCols = set()  #  used labels
 
-        for row in range(H):
-            rank = D[row].argsort()[::-1]
-            for col in rank:
-                if D[row, col] < th:
-                    continue
-                if row in usedRows or col in usedCols:
-                    continue
-                # print('find match', row, rects_pred[row], col, rects_gt[col])
-                tp += 1
+        rows = D.min(axis=1).argsort()
+        cols = D.argmin(axis=1)[rows]
 
-                usedRows.add(row)
-                usedCols.add(col)
+        for (row, col) in zip(rows, cols):
+            if D[row, col] < THRESHOLD:
+                continue
+            if row in usedRows or col in usedCols:
+                continue
+            # print('find match', row, rects_pred[row], col, rects_gt[col])
+            tp += 1
+
+            usedRows.add(row)
+            usedCols.add(col)
+
+        # for row in range(H):
+        #     rank = D[row].argsort()[::-1]
+        #     for col in rank:
+        #         if D[row, col] < THRESHOLD:
+        #             continue
+        #         if row in usedRows or col in usedCols:
+        #             continue
+        #         # print('find match', row, rects_pred[row], col, rects_gt[col])
+        #         tp += 1
+        #
+        #         usedRows.add(row)
+        #         usedCols.add(col)
 
         unusedRows = set(range(0, D.shape[0])).difference(usedRows)  # unused prediction are false positive
         unusedCols = set(range(0, D.shape[1])).difference(usedCols)  #  unused labels are false negative
@@ -109,7 +124,10 @@ def evaluation(gt_dir, pred_dir, skip=False):
 
     precision = tp / (tp + fp)
     recall = tp / (tp + fn)
-    f1 = 2 * precision * recall / (precision + recall)
+    if precision == 0 and recall == 0:
+        f1 = 0
+    else:
+        f1 = 2 * precision * recall / (precision + recall)
     print('object count: {}'.format(object_count))
     print('tp: {}'.format(tp))
     print('fp: {}'.format(fp))
@@ -120,6 +138,100 @@ def evaluation(gt_dir, pred_dir, skip=False):
     print('iou tot / frame.... boh')
 
     return precision, recall, f1
+
+
+def evaluation_2bbox(rects_pred, rects_gt):
+    tp = 0
+    fp = 0
+    fn = 0
+
+    if len(rects_gt) == 0:
+        fp = len(rects_pred)
+    elif len(rects_pred) == 0:
+        fn = len(rects_gt)
+    else:
+        H = len(rects_pred)
+        W = len(rects_gt)
+
+        D = np.zeros((H, W))
+        for i in range(H):
+            for j in range(W):
+                D[i, j] = IoU(rects_pred[i], rects_gt[j])
+
+        usedRows = set()  # used predictions
+        usedCols = set()  #  used labels
+
+        rows = D.min(axis=1).argsort()
+        cols = D.argmin(axis=1)[rows]
+
+        for (row, col) in zip(rows, cols):
+            if D[row, col] < THRESHOLD:
+                continue
+            if row in usedRows or col in usedCols:
+                continue
+            # print('find match', row, rects_pred[row], col, rects_gt[col])
+            tp += 1
+
+            usedRows.add(row)
+            usedCols.add(col)
+
+        # for row in range(H):
+        #     rank = D[row].argsort()[::-1]
+        #     for col in rank:
+        #         if D[row, col] < THRESHOLD:
+        #             continue
+        #         if row in usedRows or col in usedCols:
+        #             continue
+        #         # print('find match', row, rects_pred[row], col, rects_gt[col])
+        #         tp += 1
+        #
+        #         usedRows.add(row)
+        #         usedCols.add(col)
+
+        unusedRows = set(range(0, D.shape[0])).difference(usedRows)  # unused prediction are false positive
+        unusedCols = set(range(0, D.shape[1])).difference(usedCols)  #  unused labels are false negative
+
+        fp = len(unusedRows)
+        fn = len(unusedCols)
+
+    return tp, fp, fn
+
+
+def match_pred_gt(rects_pred, rects_gt):
+
+    overlapping = [0] * len(rects_pred)
+
+    if len(rects_gt) == 0:
+        return overlapping
+
+    elif len(rects_pred) == 0:
+        return []
+
+    H = len(rects_pred)
+    W = len(rects_gt)
+    D = np.zeros((H, W))
+    for i in range(H):
+        for j in range(W):
+            D[i, j] = IoU(rects_pred[i], rects_gt[j])
+
+    usedRows = set()  # used predictions
+    usedCols = set()  #  used labels
+
+    rows = D.min(axis=1).argsort()
+    cols = D.argmin(axis=1)[rows]
+
+    for (row, col) in zip(rows, cols):
+        if D[row, col] < THRESHOLD:
+            continue
+        if row in usedRows or col in usedCols:
+            continue
+
+        overlapping[row] = D[row, col]
+
+        usedRows.add(row)
+        usedCols.add(col)
+
+    return overlapping
 
 
 def IoU_old(bboxa, bboxb):
