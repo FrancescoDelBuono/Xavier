@@ -153,6 +153,8 @@ def main():
     FP = 0
     FN = 0
 
+    start = time.time()
+
     while True:
         r, frame = cap.read()
         if not r:
@@ -221,8 +223,17 @@ def main():
                 count * 100.0 / total_frame))
         count += 1
 
+
+    tot_time = time.time()-start
+
+
+
+
+
     if save_evaluation:
         precision, recall, f1 = evaluation(label_dir, output_dir, skip=True)
+        print('time: {}'.format(tot_time))
+        print('FPS: {}'.format(total_frame / tot_time))
 
         #  print('precision: {}'.format(precision))
         #  print('recall: {}'.format(recall))
@@ -240,6 +251,8 @@ def main():
         print('precision: {}'.format(precision))
         print('recall: {}'.format(recall))
         print('f1: {}'.format(f1))
+        print('time: {}'.format(tot_time))
+        print('FPS: {}'.format(total_frame/tot_time))
 
     cap.release()
 
