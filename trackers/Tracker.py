@@ -319,32 +319,9 @@ class OpenTracker:
             for i in range(H):
                 for j in range(W):
                     D[i, j] = self.iou(object_rects[i], input_rects[j])
-            # print('D matrix')
-            # print(D)
 
             usedRows = set()
             usedCols = set()
-
-            # rows = D.min(axis=1).argsort()
-            # cols = D.argmin(axis=1)[rows]
-            #
-            # for (row, col) in zip(rows, cols):
-            #     if D[row, col] < self.th:
-            #         continue
-            #     if row in usedRows or col in usedCols:
-            #         continue
-            #     # print('find match', objectIDs[row], col)
-            #     objectID = objectIDs[row]
-            #     self.objects[objectID] = input_rects[col]
-            #     if self.reinit:
-            #         xa, ya, xb, yb = input_rects[col]
-            #         self.trackers[objectID] = self.createTrackerByName(self.tracker)
-            #         self.trackers[objectID].init(frame, (xa, ya, xb - xa, yb - ya))
-            #
-            #     self.disappeared[objectID] = 0
-            #
-            #     usedRows.add(row)
-            #     usedCols.add(col)
 
             for row in range(H):
                 rank = D[row].argsort()[::-1]
@@ -391,6 +368,195 @@ class OpenTracker:
             val = np.append(val, objectID)
             rects.append(val)
         return rects
+
+    def iou(self, bb_test, bb_gt):
+        """
+        Computes IUO between two bboxes in the form [x1,y1,x2,y2]
+        """
+        xx1 = np.maximum(bb_test[0], bb_gt[0])
+        yy1 = np.maximum(bb_test[1], bb_gt[1])
+        xx2 = np.minimum(bb_test[2], bb_gt[2])
+        yy2 = np.minimum(bb_test[3], bb_gt[3])
+        w = np.maximum(0., xx2 - xx1)
+        h = np.maximum(0., yy2 - yy1)
+        wh = w * h
+        o = wh / ((bb_test[2] - bb_test[0]) * (bb_test[3] - bb_test[1])
+                  + (bb_gt[2] - bb_gt[0]) * (bb_gt[3] - bb_gt[1]) - wh)
+        return o
+
+
+
+class OpenTrackerWithConfidence:
+    trackerTypes = ['boosting', 'mil', 'kfc', 'tlf', 'medianflow', 'mosse', 'csrt']
+
+    def __init__(self, tracker='csrt', reinit=True, max_disappeared=15, th=0.5, show_ghost=10):
+
+        self.next_objectID = 0
+        self.objects = OrderedDict()
+        self.confidences = OrderedDict()
+        self.disappeared = OrderedDict()
+        self.trackers = OrderedDict()
+
+        self.reinit = reinit
+
+        self.tracker = tracker
+        self.max_disappeared = max_disappeared
+        self.show_ghost = show_ghost
+        self.th = th
+        self.count = 0
+
+    def createTrackerByName(self, trackerType):
+        # Create a tracker based on tracker name
+        if trackerType == self.trackerTypes[0]:
+            tracker = cv2.TrackerBoosting_create()
+        elif trackerType == self.trackerTypes[1]:
+            tracker = cv2.TrackerMIL_create()
+        elif trackerType == self.trackerTypes[2]:
+            tracker = cv2.TrackerKCF_create()
+        elif trackerType == self.trackerTypes[3]:
+            tracker = cv2.TrackerTLD_create()
+        elif trackerType == self.trackerTypes[4]:
+            tracker = cv2.TrackerMedianFlow_create()
+        elif trackerType == self.trackerTypes[5]:
+            tracker = cv2.TrackerMOSSE_create()
+        elif trackerType == self.trackerTypes[6]:
+            tracker = cv2.TrackerCSRT_create()
+        else:
+            tracker = None
+            print('Incorrect tracker name')
+            print('Available trackers are:')
+            for t in self.trackerTypes:
+                print(t)
+
+        return tracker
+
+    def register(self, frame, rect, confidence):
+        # when registering an object we use the next available object
+        # ID to store the rect
+        #  print('register: ', rect)
+        xa, ya, xb, yb = rect
+
+        self.objects[self.next_objectID] = rect
+        self.confidences[self.next_objectID] = confidence
+        self.disappeared[self.next_objectID] = 0
+
+        # self.trackers[self.next_objectID] = self.createTrackerByName(self.tracker)
+        self.trackers[self.next_objectID] = self.createTrackerByName(trackerType='csrt')
+        self.trackers[self.next_objectID].init(frame, (xa, ya, xb - xa, yb - ya))
+
+        self.next_objectID += 1
+
+    def deregister(self, objectID):
+        #  print('deregister: ', objectID)
+
+        # to deregister an object ID we delete the object ID from
+        # both of our respective dictionaries
+        del self.objects[objectID]
+        del self.confidences[objectID]
+        del self.disappeared[objectID]
+        del self.trackers[objectID]
+
+    def update(self, frame, rects, confidences):
+        #  print('update')
+        # print(rects)
+        unregisters = []
+        for objectID, tracker in self.trackers.items():
+            (success, box) = tracker.update(frame)
+            if success:
+                (x, y, w, h) = [int(v) for v in box]
+                self.objects[objectID] = [x, y, x + w, y + h]
+            else:
+                #  print('fail update tracker', objectID)
+                unregisters.append(objectID)
+
+        for objectID in unregisters:
+            self.deregister(objectID)
+
+        self.count += 1
+        if len(rects) == 0:
+            #  print('no rects in input')
+            unregisters = []
+            for objectID in self.disappeared.keys():
+                self.disappeared[objectID] += 1
+                if self.disappeared[objectID] > self.max_disappeared:
+                    unregisters.append(objectID)
+
+            for objectID in unregisters:
+                self.deregister(objectID)
+
+            return self.return_current_objects()
+
+        input_rects = rects.copy()
+
+        if len(self.objects) == 0:
+            #  print('no objects in current state save the input')
+            for i in range(0, len(input_rects)):
+                self.register(frame, input_rects[i], confidences[i])
+        else:
+            #  print('object in current state')
+            objectIDs = list(self.objects.keys())
+            object_rects = list(self.objects.values())
+
+            H = len(objectIDs)
+            W = len(input_rects)
+
+            D = np.zeros((H, W))
+            for i in range(H):
+                for j in range(W):
+                    D[i, j] = self.iou(object_rects[i], input_rects[j])
+
+            usedRows = set()
+            usedCols = set()
+
+            for row in range(H):
+                rank = D[row].argsort()[::-1]
+                for col in rank:
+                    if D[row, col] < self.th:
+                        continue
+                    if row in usedRows or col in usedCols:
+                        continue
+                    # print('find match', objectIDs[row], col)
+                    objectID = objectIDs[row]
+                    self.objects[objectID] = input_rects[col]
+                    self.confidences[objectID] = confidences[col]
+
+                    if self.reinit:
+                        xa, ya, xb, yb = input_rects[col]
+                        self.trackers[objectID] = self.createTrackerByName(self.tracker)
+                        self.trackers[objectID].init(frame, (xa, ya, xb - xa, yb - ya))
+
+                    self.disappeared[objectID] = 0
+
+                    usedRows.add(row)
+                    usedCols.add(col)
+
+            unusedRows = set(range(0, D.shape[0])).difference(usedRows)
+            unusedCols = set(range(0, D.shape[1])).difference(usedCols)
+
+            for row in unusedRows:
+                #  print('remove lost tracking')
+                objectID = objectIDs[row]
+                self.disappeared[objectID] += 1
+                if self.disappeared[objectID] > self.max_disappeared:
+                    self.deregister(objectID)
+
+            for col in unusedCols:
+                # print('save new detection')
+                self.register(frame, input_rects[col], confidences[col])
+
+        return self.return_current_objects()
+
+    def return_current_objects(self):
+        rects = []
+        confidences = []
+        for (objectID, rect) in self.objects.items():
+            if self.disappeared[objectID] > self.show_ghost:
+                continue
+            val = rect
+            val = np.append(val, objectID)
+            rects.append(val)
+            confidences.append(self.confidences[objectID])
+        return rects, confidences
 
     def iou(self, bb_test, bb_gt):
         """
