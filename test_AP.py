@@ -176,6 +176,10 @@ def main():
                 count * 100.0 / total_frame))
         count += 1
 
+    if len(confidences) == 0:
+        print('no object are detected, impossible to compute AP')
+        return
+
     y_true = [True if val > th else False for val in overlaps]
     y_scores = confidences
     ap = average_precision_score(y_true, y_scores)

@@ -10,7 +10,7 @@ import pandas as pd
 
 from trackers.Tracker import TrackableObject, Sort, CentroidTracker, OpenTracker
 from tools.utils import non_max_suppression
-#from tools.perspective import HEIGHT, WIDTH
+# from tools.perspective import HEIGHT, WIDTH
 from tools.create_matrix import create_birdeye
 
 from yolov3.detection_2 import Yolo
@@ -166,7 +166,7 @@ def main():
         out = cv2.VideoWriter(output_file, fourcc, frame_fps, (frame_width, frame_height))
         # out = cv2.VideoWriter(output_file, fourcc, frame_fps, (640, 480))
 
-    #background = np.zeros((h, w, 3))
+    # background = np.zeros((h, w, 3))
 
     count = 0
     while True:
@@ -177,7 +177,7 @@ def main():
         if not r:
             break
 
-        h,w,c = frame.shape
+        h, w, c = frame.shape
 
         if top_view and count == 0:
             background = frame.copy()
