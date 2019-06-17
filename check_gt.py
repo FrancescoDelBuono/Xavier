@@ -1,5 +1,6 @@
 import os
 import cv2
+import time
 import argparse
 import numpy as np
 
@@ -31,7 +32,14 @@ def main():
     cap = cv2.VideoCapture(input)
 
     count = 0
+    t1 = time.time()
+
     while True:
+        t2 = time.time()
+        if t2 - t1 < 0.10:
+            continue
+        t1 = t2
+
         r, frame = cap.read()
         if not r:
             break

@@ -15,7 +15,6 @@ from tools.create_matrix import create_birdeye
 
 from yolov3.detection_2 import Yolo
 
-
 detector_types = ['hog', 'yolov3']
 trackers_types = ['centroid', 'sort', 'open']
 
@@ -142,15 +141,12 @@ def main():
         if not r:
             break
 
+        h, w, c = frame.shape
+
         if top_view and count == 0:
             background = frame.copy()
-            background = cv2.resize(background, (WIDTH, HEIGHT))
-            background = cv2.warpPerspective(background, matrix, (WIDTH, HEIGHT), cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
-
-            # cv2.imshow("background", background)
-            # k = cv2.waitKey(30) & 0xff
-            # if k == 27:
-            #     break
+            background = cv2.resize(background, (w, h))
+            background = cv2.warpPerspective(background, matrix, (w, h), cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
 
         # Detection
         if count % skip == 0:

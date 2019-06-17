@@ -10,6 +10,7 @@ import pandas as pd
 from sklearn.metrics import average_precision_score
 
 from yolov3.detection_2 import Yolo
+from trackers.Tracker import OpenTrackerWithConfidence
 from tools.utils import non_max_suppression, read_labels
 from tools.metrics import match_pred_gt
 
@@ -35,6 +36,15 @@ def main():
                         default='yolov3',
                         help='configuration dir for yolov3Conf')
 
+    parser.add_argument('--tracker',
+                        action='store_true',
+                        help='combination of detection and tracker to detection task')
+
+    parser.add_argument('--skip',
+                        default=1,
+                        type=int,
+                        help='number of frame to skip after detection')
+
     parser.add_argument('--th',
                         default=0.5,
                         type=float,
@@ -56,6 +66,7 @@ def main():
     name = os.path.splitext(name)[0]
 
     detector_name = args.detector
+    withTracker = args.tracker
 
     if detector_name == 'yolov3Conf':
         conf_dir = args.conf
@@ -77,15 +88,22 @@ def main():
     if not os.path.isdir(label_dir):
         print('label_dir {} not found'.format(label_dir))
         return
+
     th = args.th
     if th < 0 or th > 1:
         raise argparse.ArgumentTypeError("%d must be between 0 and 1" % th)
+
+    skip = args.skip
+    if skip < 1:
+        raise argparse.ArgumentTypeError("%d is an invalid positive int value" % skip)
 
     show_video = args.show
 
     print('input: {}'.format(input))
     print('label dir:', label_dir)
     print('detector: {}'.format(detector_name))
+    print('tracker: {}'.format(withTracker))
+    print('skip frame: {}'.format(skip))
     print('show_video: {}'.format(show_video))
 
     detector = None
@@ -103,6 +121,16 @@ def main():
             print(d)
 
     tracker = None
+    if withTracker is False and skip != 1:
+        raise ValueError('impossible to use skip frame without tracker')
+
+    if withTracker:
+        if skip > 10:
+            disap = int(skip * 1.5)
+            tracker = OpenTrackerWithConfidence(tracker='csrt', reinit=True, max_disappeared=disap, th=0.5, show_ghost=skip)
+        else:
+            tracker = OpenTrackerWithConfidence(tracker='csrt', reinit=True, max_disappeared=20, th=0.5, show_ghost=10)
+
 
     cap = cv2.VideoCapture(input)
 
@@ -124,23 +152,22 @@ def main():
             break
 
         rects = []
-        if detector_name == 'hog':
-            # frame = cv2.resize(frame, (640, 480))  # Downscale to improve frame rate
-            gray_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)  # HOG needs a grayscale image
-            rects, weights = detector.detectMultiScale(gray_frame)
+        if count % skip == 0:
+            if detector_name == 'hog':
+                gray_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)  # HOG needs a grayscale image
+                rects, weights = detector.detectMultiScale(gray_frame)
+                rects = np.array([[x, y, x + w, y + h] for (x, y, w, h) in rects])
+                rects, picks = non_max_suppression(rects, overlap_thresh=0.65, index=True)
+                weights = np.asarray(weights)
+                weights = weights[picks]
+                confidence = [w for w in weights]
+            else:
+                rects, confidence = detector.detect_image_confidence(frame)
 
-            # rects = np.array([[x, y, x + w, y + h] for i, (x, y, w, h) in enumerate(rects) if weights[i] > 0.7])
-            # rects = non_max_suppression(rects, overlap_thresh=0.65)
+        if withTracker:
+            objects, confidence = tracker.update(frame, rects, confidence)
+            rects = np.array([[int(xA), int(yA), int(xB), int(yB)] for xA, yA, xB, yB, objectId in objects])
 
-            rects = np.array([[x, y, x + w, y + h] for (x, y, w, h) in rects])
-            rects, picks = non_max_suppression(rects, overlap_thresh=0.65, index=True)
-            weights = np.asarray(weights)
-            weights = weights[picks]
-
-            confidence = [w for w in weights]
-
-        else:
-            rects, confidence = detector.detect_image_confidence(frame)
 
         for rect in rects:
             xA, yA, xB, yB = rect
@@ -177,6 +204,10 @@ def main():
             print('Processed {0:.1f}% of video.'.format(
                 count * 100.0 / total_frame))
         count += 1
+
+    if len(confidences) == 0:
+        print('no object are detected, impossible to compute AP')
+        return
 
     y_true = [True if val > th else False for val in overlaps]
     y_scores = confidences
