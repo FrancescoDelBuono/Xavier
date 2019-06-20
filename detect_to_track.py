@@ -3,20 +3,33 @@ import cv2
 import time
 import warnings
 
-# warnings.filterwarnings("ignore")
 import argparse
 import numpy as np
 import pandas as pd
 
 from trackers.Tracker import TrackableObject, Sort, CentroidTracker, OpenTracker
 from tools.utils import non_max_suppression
-# from tools.perspective import HEIGHT, WIDTH
 from tools.create_matrix import create_birdeye
 
 from yolov3.detection_2 import Yolo
 
+warnings.filterwarnings("ignore")
+
 detector_types = ['hog', 'yolov3']
 trackers_types = ['centroid', 'sort', 'open']
+
+"""
+Xavier algorithm to detect and track people
+2 detector:
+    - hog
+    - yolov3
+3 trackers:
+    - OpenTracker
+    - Centroid
+    - Sort
+with the possibility to change the perspective of the image
+and visualize also the trace of the people detected 
+"""
 
 
 def main():
@@ -73,12 +86,15 @@ def main():
     matrix_file = args.matrix
 
     if top_view:
+        # check top view matrix
         if matrix_file:
             if not os.path.isfile(matrix_file):
                 print(matrix_file, 'is not a file')
                 return
-
             matrix = np.load(matrix_file)
+
+        # create the matrix to
+        # visualize the top view
         else:
             matrix = create_birdeye(input)
             if matrix is None:
@@ -103,15 +119,21 @@ def main():
     name = os.path.splitext(name)[0]
     dir_name = os.path.dirname(input)
 
+    # only with OpenTracker we are able to predict
+    # and to avoid the detection to each frame
     skip = args.skip
     if skip < 1:
         raise argparse.ArgumentTypeError("%d is an invalid positive int value" % skip)
 
+    # instance the detector (hog or yolov3)
     detector = None
     if detector_name == 'hog':
         detector = cv2.HOGDescriptor()
         detector.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+
     elif detector_name == 'yolov3':
+        # check the existence of configuration
+        # and weights file for yolov3
         if not os.path.isfile('data/config/yolov3/yolov3.pt'):
             print('data/config/yolov3/yolov3.pt not found')
             return
@@ -125,15 +147,20 @@ def main():
         for d in detector_types:
             print(d)
 
+    # only with OpenTracker we are able to predict
+    # and to avoid the detection to each frame
     if tracker_name != 'open' and skip > 1:
         print('impossible skip frame without OpenTracker')
         return
 
+    # instance the tracker (open, sort, or centroid)
     tracker = None
     if tracker_name == 'sort':
         tracker = Sort()
+
     elif tracker_name == 'centroid':
         tracker = CentroidTracker(maxDisappeared=10)
+
     elif tracker_name == 'open':
         if skip > 10:
             disap = int(skip * 1.5)
@@ -147,16 +174,15 @@ def main():
             print(t)
 
     trackable_objects = {}
-    skip_frame = 10
 
     history = []
 
-    # cap = cv2.VideoCapture("data/video/drop.avi")
     cap = cv2.VideoCapture(input)
     total_frame = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
     out = None
     if save_video:
+        # get the input video metadata
         frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         frame_fps = int(cap.get(cv2.CAP_PROP_FPS))
@@ -164,15 +190,11 @@ def main():
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         output_file = os.path.join(dir_name, 'result_' + name + '.avi')
         out = cv2.VideoWriter(output_file, fourcc, frame_fps, (frame_width, frame_height))
-        # out = cv2.VideoWriter(output_file, fourcc, frame_fps, (640, 480))
 
     # background = np.zeros((h, w, 3))
 
     count = 0
     while True:
-        # if count == 10:
-        #     break
-
         r, frame = cap.read()
         if not r:
             break
@@ -180,11 +202,13 @@ def main():
         h, w, c = frame.shape
 
         if top_view and count == 0:
+            # using the first frame as background to change the perspective
             background = frame.copy()
             background = cv2.resize(background, (w, h))
             background = cv2.warpPerspective(background, matrix, (w, h), cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
 
         # Detection
+        rects = []  # empty rects to avoid previous prediction propagation when skip > 1
         if count % skip == 0:
             if detector_name == 'yolov3':
                 rects = detector.detect_image(frame)
@@ -192,7 +216,9 @@ def main():
                 # frame = cv2.resize(frame, (640, 480))  # Downscale to improve frame rate
                 gray_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)  # HOG needs a grayscale image
                 rects, weights = detector.detectMultiScale(gray_frame)
+                # keep only the detections with confidence greater than 0.7
                 rects = np.array([[x, y, x + w, y + h] for i, (x, y, w, h) in enumerate(rects) if weights[i] > 0.7])
+                # remove overlapped detections (no max suppression)
                 rects = non_max_suppression(rects, overlap_thresh=0.65)
 
         # Tracking
@@ -203,8 +229,8 @@ def main():
             objects = tracker.update(rects)
 
         # Visualization
-        for object in objects:
-            xA, yA, xB, yB, objectId = object.astype(np.int)
+        for obj in objects:
+            xA, yA, xB, yB, objectId = obj.astype(np.int)
 
             history.append({
                 'frame_id': count,
@@ -240,8 +266,8 @@ def main():
         # View From Above
         if top_view:
             top_image = background.copy()
-            for object in objects:
-                xA, yA, xB, yB, objectId = object.astype(np.int)
+            for obj in objects:
+                xA, yA, xB, yB, objectId = obj.astype(np.int)
                 color = trackable_objects[objectId].color
 
                 cX = int((xA + xB) / 2.0)
@@ -267,15 +293,9 @@ def main():
             k = cv2.waitKey(30) & 0xff
             if k == 27:
                 break
-            # pass
 
         if save_video:
             out.write(frame)
-            # pass
-
-        # plt.imshow(frame[:, :, ::-1])
-        # plt.grid(False)
-        # plt.show()
 
         if count % 100 == 0 or count == total_frame:
             print('Processed {0:.1f}% of video.'.format(

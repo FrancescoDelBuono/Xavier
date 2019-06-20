@@ -2,23 +2,27 @@ import os
 import cv2
 import time
 import warnings
-
-warnings.filterwarnings("ignore")
 import argparse
 import numpy as np
-import pandas as pd
 
 from trackers.Tracker import OpenTracker
 from yolov3.detection_2 import Yolo
 from tools.utils import non_max_suppression, read_labels
 from tools.metrics import evaluation, evaluation_2bbox
 
+warnings.filterwarnings("ignore")
+
 detector_types = ['hog', 'yolov3', 'yolov3Conf']
 trackers_types = ['centroid', 'sort', 'open']
 
+"""
+test to get precision and recall 
+given a video and the ground truth 
+"""
+
 
 def main():
-    parser = argparse.ArgumentParser(description='Run "timeseries_converter"')
+    parser = argparse.ArgumentParser(description='Run "test" to get precision and recall')
     parser.add_argument('--input',
                         required=True,
                         help='file to detect and track')
@@ -102,6 +106,8 @@ def main():
     save_evaluation = args.save
     show_video = args.show
 
+    # only with OpenTracker we are able to predict
+    # and to avoid the detection to each frame
     skip = args.skip
     if skip < 1:
         raise argparse.ArgumentTypeError("%d is an invalid positive int value" % skip)
@@ -116,19 +122,25 @@ def main():
     print('show_video: {}'.format(show_video))
 
     detector = None
+    # instance the detector (hog or yolov3)
     if detector_name == 'hog':
         detector = cv2.HOGDescriptor()
         detector.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+
     elif detector_name == 'yolov3':
         detector = Yolo(weights='data/config/yolov3/yolov3.pt', cfg='data/config/yolov3/yolov3.cfg')
+
     elif detector_name == 'yolov3Conf':
         detector = Yolo(weights=weights, cfg=conf)
+
     else:
         print('Incorrect detector name')
         print('Available detectors are:')
         for d in detector_types:
             print(d)
 
+    # only with OpenTracker we are able to predict
+    # and to avoid the detection to each frame
     tracker = None
     if withTracker is False and skip != 1:
         raise ValueError('impossible to use skip frame without tracker')
@@ -139,8 +151,6 @@ def main():
             tracker = OpenTracker(tracker='csrt', reinit=True, max_disappeared=disap, th=0.5, show_ghost=skip)
         else:
             tracker = OpenTracker(tracker='csrt', reinit=True, max_disappeared=20, th=0.5, show_ghost=10)
-
-    trackable_objects = {}
 
     cap = cv2.VideoCapture(input)
 
@@ -188,6 +198,7 @@ def main():
             if show_video:
                 cv2.rectangle(frame, (xA, yA), (xB, yB), (0, 255, 0), 2)
 
+        # perform evaluation at the end of the detection
         if save_evaluation and len(rects) > 0:
             name = '{:03d}'.format(count)
             file_name = os.path.join(output_dir, name + '.txt')
@@ -198,6 +209,7 @@ def main():
                     xA, yA, xB, yB = rect
                     f.write(str(int(xA)) + ' ' + str(int(yA)) + ' ' + str(int(xB)) + ' ' + str(int(yB)) + "\n")
 
+        # perform evaluation online during the detection
         if not save_evaluation:
             name = '{:03d}'.format(count)
             file_name = os.path.join(label_dir, name + '.txt')
@@ -223,12 +235,7 @@ def main():
                 count * 100.0 / total_frame))
         count += 1
 
-
-    tot_time = time.time()-start
-
-
-
-
+    tot_time = time.time() - start
 
     if save_evaluation:
         precision, recall, f1 = evaluation(label_dir, output_dir, skip=True)
@@ -252,7 +259,7 @@ def main():
         print('recall: {}'.format(recall))
         print('f1: {}'.format(f1))
         print('time: {}'.format(tot_time))
-        print('FPS: {}'.format(total_frame/tot_time))
+        print('FPS: {}'.format(total_frame / tot_time))
 
     cap.release()
 

@@ -1,6 +1,5 @@
 import os
 import numpy as np
-from shapely.geometry import box
 
 from tools.utils import read_labels, scan_dir
 
@@ -8,9 +7,7 @@ THRESHOLD = 0.5
 
 
 def IoU(bb_test, bb_gt):
-    """
-    Computes IUO between two bboxes in the form [x1,y1,x2,y2]
-    """
+    # Computes IUO between two bboxes in the form [x1,y1,x2,y2]
     xx1 = np.maximum(bb_test[0], bb_gt[0])
     yy1 = np.maximum(bb_test[1], bb_gt[1])
     xx2 = np.minimum(bb_test[2], bb_gt[2])
@@ -24,6 +21,7 @@ def IoU(bb_test, bb_gt):
 
 
 def evaluation(gt_dir, pred_dir, skip=False):
+    # compute precision and recall given two directories with the labels for the same video
     fp = 0
     fn = 0
     tp = 0
@@ -34,15 +32,18 @@ def evaluation(gt_dir, pred_dir, skip=False):
     if not os.path.isdir(pred_dir):
         raise ValueError('pred_dir is not a valid directory')
 
-    iou_tot = 0
     frame_count = 0
     object_count = 0
 
+    # scan the two folders to get the list of label files
+    # with one file for frame
     list_pred = scan_dir(pred_dir, ext='.txt')
     list_pred = [os.path.basename(x) for x in list_pred]
     list_gt = scan_dir(gt_dir, ext='.txt')
     list_gt = [os.path.basename(x) for x in list_gt]
 
+    # for each label in the files that we have only in the
+    # prediction folder we have a false positive
     fp_file = [item for item in list(list_pred) if item not in list_gt]
     frame_count += len(fp_file)
     for file in fp_file:
@@ -50,6 +51,8 @@ def evaluation(gt_dir, pred_dir, skip=False):
         rects = read_labels(file, skip)
         fp += len(rects)
 
+    # for each label in the files that we have only in the
+    # ground truth folder we have a false negative
     fn_file = [item for item in list(list_gt) if item not in list_pred]
     frame_count += len(fn_file)
     for file in fn_file:
@@ -61,6 +64,8 @@ def evaluation(gt_dir, pred_dir, skip=False):
     files = [item for item in list(list_pred) if item in list_gt]
     frame_count += len(files)
 
+    # for each file for the same frame we compute false positive
+    # false negative and true positive
     for file in files:
         file_gt = os.path.join(gt_dir, file)
         file_pred = os.path.join(pred_dir, file)
@@ -89,20 +94,6 @@ def evaluation(gt_dir, pred_dir, skip=False):
         usedRows = set()  # used predictions
         usedCols = set()  #  used labels
 
-        # rows = D.min(axis=1).argsort()
-        # cols = D.argmin(axis=1)[rows]
-        #
-        # for (row, col) in zip(rows, cols):
-        #     if D[row, col] < THRESHOLD:
-        #         continue
-        #     if row in usedRows or col in usedCols:
-        #         continue
-        #     # print('find match', row, rects_pred[row], col, rects_gt[col])
-        #     tp += 1
-        #
-        #     usedRows.add(row)
-        #     usedCols.add(col)
-
         for row in range(H):
             rank = D[row].argsort()[::-1]
             for col in rank:
@@ -110,7 +101,7 @@ def evaluation(gt_dir, pred_dir, skip=False):
                     continue
                 if row in usedRows or col in usedCols:
                     continue
-                # print('find match', row, rects_pred[row], col, rects_gt[col])
+                # correct match between prediction rect and label rect
                 tp += 1
 
                 usedRows.add(row)
@@ -135,12 +126,14 @@ def evaluation(gt_dir, pred_dir, skip=False):
     print('precision: {}'.format(precision))
     print('recall: {}'.format(recall))
     print('f1: {}'.format(f1))
-    print('iou tot / frame.... boh')
 
     return precision, recall, f1
 
 
 def evaluation_2bbox(rects_pred, rects_gt):
+    # compute true positive, false positive and false negative
+    # given two list of rects using IoU
+
     tp = 0
     fp = 0
     fn = 0
@@ -161,20 +154,6 @@ def evaluation_2bbox(rects_pred, rects_gt):
         usedRows = set()  # used predictions
         usedCols = set()  #  used labels
 
-        # rows = D.min(axis=1).argsort()
-        # cols = D.argmin(axis=1)[rows]
-        #
-        # for (row, col) in zip(rows, cols):
-        #     if D[row, col] < THRESHOLD:
-        #         continue
-        #     if row in usedRows or col in usedCols:
-        #         continue
-        #     # print('find match', row, rects_pred[row], col, rects_gt[col])
-        #     tp += 1
-        #
-        #     usedRows.add(row)
-        #     usedCols.add(col)
-
         for row in range(H):
             rank = D[row].argsort()[::-1]
             for col in rank:
@@ -182,7 +161,6 @@ def evaluation_2bbox(rects_pred, rects_gt):
                     continue
                 if row in usedRows or col in usedCols:
                     continue
-                # print('find match', row, rects_pred[row], col, rects_gt[col])
                 tp += 1
 
                 usedRows.add(row)
@@ -198,7 +176,9 @@ def evaluation_2bbox(rects_pred, rects_gt):
 
 
 def match_pred_gt(rects_pred, rects_gt):
-
+    # function to find for each predicted rect the ground truth rect that
+    # provide the highest IoU, where for each ground truth
+    # only one predicted rect could be used
     overlapping = [0] * len(rects_pred)
 
     if len(rects_gt) == 0:
@@ -207,7 +187,8 @@ def match_pred_gt(rects_pred, rects_gt):
     elif len(rects_pred) == 0:
         return []
 
-    # print('create matrix')
+    # compute IoU for each input predicted
+    # rect and ground truth rect
     H = len(rects_pred)
     W = len(rects_gt)
     D = np.zeros((H, W))
@@ -217,11 +198,6 @@ def match_pred_gt(rects_pred, rects_gt):
 
     usedRows = set()  # used predictions
     usedCols = set()  #  used labels
-
-    # rows = D.min(axis=1).argsort()
-    # cols = D.argmin(axis=1)[rows]
-    #
-    # for (row, col) in zip(rows, cols):
 
     for row in range(H):
         rank = D[row].argsort()[::-1]
@@ -237,145 +213,3 @@ def match_pred_gt(rects_pred, rects_gt):
             usedCols.add(col)
 
     return overlapping
-
-
-def IoU_old(bboxa, bboxb):
-    # print(bboxa,bboxb)
-
-    box_a = [bboxa[0][0][0], bboxa[0][0][1], bboxa[0][1][0], bboxa[0][1][1]]
-    box_b = [bboxb[0][0][0], bboxb[0][0][1], bboxb[0][1][0], bboxb[0][1][1]]
-
-    p1 = box(minx=box_a[0], miny=box_a[1], maxx=box_a[2], maxy=box_a[3])
-    p2 = box(minx=box_b[0], miny=box_b[1], maxx=box_b[2], maxy=box_b[3])
-
-    intersection = p1.intersection(p2)
-
-    iou = intersection.area / float(p1.area + p2.area - intersection.area)
-
-    return iou
-
-
-def evaluation_old(gt_dir, pred_dir):
-    iou_tot = 0
-    frame_count = 0
-    fp = 0
-    fn = 0
-    tp = 0
-    object_count = 0
-
-    list_pred = sorted(os.listdir(pred_dir))
-    list_gt = sorted(os.listdir(gt_dir))
-
-    fp_file = [item for item in list(list_pred) if item not in list_gt]
-
-    for file in fp_file:
-        f_pred = open(pred_dir + file, 'r')
-        n_object_pred, rect_pred = read_labels(f_pred)
-        if n_object_pred != 0:
-            fp = fp + n_object_pred
-
-    for file in list_gt:
-        name = os.path.join(gt_dir, file)
-        f_gt = open(name, 'r')
-
-        try:
-            name = os.path.join(pred_dir, file)
-            f_pred = open(name, 'r')
-
-            n_object_gt, rect_gt = read_labels(f_gt)
-            n_object_pred, rect_pred = read_labels(f_pred)
-
-            gt_point = []
-            if n_object_gt != 0:
-                object_count += n_object_gt
-                for i in range(n_object_gt):
-                    c1 = rect_gt[0 + (2 * i)]
-                    c2 = rect_gt[1 + (2 * i)]
-                    gt_point.append((c1, c2))
-                    # cv2.rectangle(frame, c1, c2, (0, 255, 0), 2)
-
-            pred_point = []
-            if n_object_pred != 0:
-
-                for i in range(n_object_pred):
-                    c1 = rect_pred[0 + (2 * i)]
-                    c2 = rect_pred[1 + (2 * i)]
-                    pred_point.append((c1, c2))
-                    # cv2.rectangle(frame, c1, c2, (255, 0, 0), 2)
-
-            if (len(gt_point) != len(pred_point)):
-                # object_count += len(gt_point)
-
-                if len(gt_point) > len(pred_point):
-                    fn = fn + (len(gt_point) - len(pred_point))
-                else:
-                    fp = fp + (len(pred_point) - len(gt_point))
-
-                if (len(gt_point) > 1):
-                    if (len(gt_point) > 1):
-                        iou_frame = 0
-                        # calcolo iou per ogni oggetto
-                        for i in range(len(gt_point)):
-                            iou = []
-                            gt = gt_point[i]
-                            for j in range(len(pred_point)):
-                                iou.append(IoU([gt], [pred_point[j]]))
-                            # print('sono > 1')
-                            iou_frame = iou_frame + max(iou)
-                            if max(iou) >= 0.5:
-                                tp += 1
-                            else:
-                                pass
-                        iou_tot = iou_tot + (iou_frame / len(gt_point))
-                else:
-                    # object_count += len(gt_point)
-                    iou_single = IoU(gt_point, pred_point)
-                    if iou_single >= 0.5:
-                        tp += 1
-                    else:
-                        pass
-
-                    iou_tot = iou_tot + iou_single
-            else:
-                if (len(gt_point) > 1):
-                    # object_count +=len(gt_point)
-                    # aggiungo il numero di oggetti trovati
-                    iou_frame = 0
-                    # calcolo iou per ogni oggetto
-                    for i in range(len(gt_point)):
-                        iou = []
-                        gt = gt_point[i]
-                        for j in range(len(pred_point)):
-                            iou.append(IoU([gt], [pred_point[j]]))
-                        # print('sono > 1')
-                        iou_frame = iou_frame + max(iou)
-                        if max(iou) >= 0.5:
-                            tp += 1
-                        else:
-                            pass
-                    iou_tot = iou_tot + (iou_frame / len(gt_point))
-                else:
-                    # object_count +=len(gt_point)
-                    # aggiungo il numero di oggetti trovati
-                    iou_single = IoU(gt_point, pred_point)
-                    if iou_single >= 0.5:
-                        tp += 1
-                    else:
-                        pass
-
-                    iou_tot = iou_tot + iou_single
-
-            frame_count += 1
-            # cv2.imshow('img', frame)
-            # cv2.waitKey()
-        except:
-            iou_tot += 0
-            frame_count += 1
-
-    print('object count :' + str(object_count))
-    print('tp :' + str(tp))
-    print('fp :' + str(fp))
-    print('fn :' + str(fn))
-    print('precision :' + str(tp / (tp + fp)))
-    print('recall :' + str(tp / (tp + fn)))
-    print(iou_tot / frame_count)

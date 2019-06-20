@@ -4,6 +4,13 @@ import argparse
 import numpy as np
 from tools.perspective import Points, create_matrix
 
+"""
+program to create the perspective matrix,
+after the execution the user need to select the
+4 points of the green garden and after that the matrix 
+will be saved in the file './matrix.npy'
+"""
+
 
 # mouse callback function
 def mouse_click(event, x, y, flags, param):
@@ -17,7 +24,8 @@ def mouse_click(event, x, y, flags, param):
             cv2.circle(img, (x, y), 5, (255, 0, 0), -1)
 
 
-parser = argparse.ArgumentParser(description='Run "create_perspective_matrix" to create the matrix for get the Top View')
+parser = argparse.ArgumentParser(
+    description='Run "create_perspective_matrix" to create the matrix for get the Top View')
 parser.add_argument('--input',
                     required=True,
                     help='video to identify the point')
@@ -45,11 +53,6 @@ points = Points()
 h, w, c = frame.shape
 print(h, w, c)
 
-# img = np.zeros((h, w + 300, 3))
-#
-# img[:h, :w] = frame
-# print(img.shape)
-
 text = '''left click to sign the point of the green garden'''
 cv2.putText(frame, text, (3, 10),
             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
@@ -73,6 +76,8 @@ while 1:
         break
     if key & 0xFF == 32:  # space
         print('space pressed')
+        # if the number of selected points
+        # is 4 then the matrix will be created
         if len(points.points) == 4:
             break
 
@@ -80,14 +85,16 @@ cv2.destroyAllWindows()
 
 if len(points.points) == 4:
     print('save points')
-    matrix = create_matrix(points.points)
+    matrix = create_matrix(points.points, h, w)
     # outfile = './data/config/matrix.npy'
     outfile = './matrix.npy'
 
     np.save(outfile, matrix)
     matrix = np.load(outfile)
+    # change frame perspective
     result = cv2.warpPerspective(frame.copy(), matrix, (640, 480), cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
 
+    # Visualize the perspective change
     while 1:
         cv2.imshow('frame', result)
         key = cv2.waitKey(1)

@@ -2,10 +2,20 @@ import os
 import cv2
 import time
 import argparse
-import numpy as np
 
-from tools.utils import read_labels, scan_dir
+from tools.utils import read_labels
 
+"""
+function to plot a ground truth on a video
+to check how good is the ground truth
+
+frame 0 label examples 
+file_name: 000.txt
+content:
+2
+100 100 150 150
+200 200 210 230
+"""
 
 def main():
     parser = argparse.ArgumentParser(description='Run "timeseries_converter"')

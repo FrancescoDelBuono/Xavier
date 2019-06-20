@@ -1,14 +1,12 @@
-import os
 import cv2
 import numpy as np
 
 from scipy.spatial import distance as dist
 
+# HEIGHT = 480
+# WIDTH = 640
 
-#HEIGHT = 480
-#WIDTH = 640
 
-# video path for the first frame, center, color, frame, boolean True if we are at the first frame
 def bird_eye_view(points, matrix, color, frame):
     c = np.array([points], dtype=np.float32)
     c = np.array([c])
@@ -98,7 +96,7 @@ def order_points(pts):
     return [tl, tr, br, bl]
 
 
-def create_matrix(points,height,width):
+def create_matrix(points, height, width):
     print('matrix creation')
     view_h = height
     view_w = width

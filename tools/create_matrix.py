@@ -16,6 +16,8 @@ def mouse_click(event, x, y, flags, param):
 
 
 def create_birdeye(input):
+    # function to compute perspective matrix online
+    # given a video to get the top view
     input = input
     if not os.path.isfile(input):
         print(input, 'is not a file')

@@ -3,10 +3,6 @@ import glob
 import numpy as np
 
 
-def print_objects(frame, objects, show_trace=False):
-    pass
-
-
 def non_max_suppression(boxes, overlap_thresh, index=False):
     # if there are no boxes, return an empty list
     if len(boxes) == 0:
@@ -70,6 +66,7 @@ def non_max_suppression(boxes, overlap_thresh, index=False):
 
 
 def scan_dir(img_dir, ext=''):
+    # scan a directory to get all file that end with ext
     files = [entry for entry in glob.iglob("{}/**".format(img_dir), recursive=True) if
              os.path.isfile(entry) and entry.endswith(ext)]
     return files

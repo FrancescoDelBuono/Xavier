@@ -2,11 +2,8 @@ import os
 import cv2
 import time
 import warnings
-
-warnings.filterwarnings("ignore")
 import argparse
 import numpy as np
-import pandas as pd
 from sklearn.metrics import average_precision_score
 
 from yolov3.detection_2 import Yolo
@@ -14,8 +11,15 @@ from trackers.Tracker import OpenTrackerWithConfidence
 from tools.utils import non_max_suppression, read_labels
 from tools.metrics import match_pred_gt
 
+warnings.filterwarnings("ignore")
+
 detector_types = ['hog', 'yolov3', 'yolov3Conf']
 trackers_types = ['centroid', 'sort', 'open']
+
+"""
+AP evaluation to get Average Precision 
+given a video and the ground truth 
+"""
 
 
 def main():
@@ -50,7 +54,6 @@ def main():
                         type=float,
                         help='number of frame to skip after detection')
 
-
     parser.add_argument('--show',
                         action='store_true',
                         help='if show the video in output')
@@ -61,9 +64,6 @@ def main():
     if not os.path.isfile(input):
         print(input, 'is not a file')
         return
-
-    name = os.path.basename(input)
-    name = os.path.splitext(name)[0]
 
     detector_name = args.detector
     withTracker = args.tracker
@@ -107,19 +107,25 @@ def main():
     print('show_video: {}'.format(show_video))
 
     detector = None
+    # instance the detector (hog or yolov3)
     if detector_name == 'hog':
         detector = cv2.HOGDescriptor()
         detector.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+
     elif detector_name == 'yolov3':
         detector = Yolo(weights='data/config/yolov3/yolov3.pt', cfg='data/config/yolov3/yolov3.cfg')
+
     elif detector_name == 'yolov3Conf':
         detector = Yolo(weights=weights, cfg=conf)
+
     else:
         print('Incorrect detector name')
         print('Available detectors are:')
         for d in detector_types:
             print(d)
 
+    # only with OpenTracker we are able to predict
+    # and to avoid the detection to each frame
     tracker = None
     if withTracker is False and skip != 1:
         raise ValueError('impossible to use skip frame without tracker')
@@ -127,10 +133,10 @@ def main():
     if withTracker:
         if skip > 10:
             disap = int(skip * 1.5)
-            tracker = OpenTrackerWithConfidence(tracker='csrt', reinit=True, max_disappeared=disap, th=0.5, show_ghost=skip)
+            tracker = OpenTrackerWithConfidence(tracker='csrt', reinit=True, max_disappeared=disap, th=0.5,
+                                                show_ghost=skip)
         else:
             tracker = OpenTrackerWithConfidence(tracker='csrt', reinit=True, max_disappeared=20, th=0.5, show_ghost=10)
-
 
     cap = cv2.VideoCapture(input)
 
@@ -144,15 +150,15 @@ def main():
     confidences = []
     overlaps = []
 
-
-
     while True:
         r, frame = cap.read()
         if not r:
             break
 
         rects = []
+        confidence = []
         if count % skip == 0:
+            # perform detections and keep the confidence for each detection
             if detector_name == 'hog':
                 gray_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)  # HOG needs a grayscale image
                 rects, weights = detector.detectMultiScale(gray_frame)
@@ -167,7 +173,6 @@ def main():
         if withTracker:
             objects, confidence = tracker.update(frame, rects, confidence)
             rects = np.array([[int(xA), int(yA), int(xB), int(yB)] for xA, yA, xB, yB, objectId in objects])
-
 
         for rect in rects:
             xA, yA, xB, yB = rect
@@ -190,6 +195,8 @@ def main():
             if os.path.isfile(file_name):
                 rects_gt = read_labels(file_name, skip=True)
 
+            # compute overlapping between predictions and ground truth
+            # where for each ground truth could be at most one prediction
             overlapping = match_pred_gt(rects, rects_gt)
             overlaps += overlapping
             confidences += confidence
