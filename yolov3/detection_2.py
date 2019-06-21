@@ -72,6 +72,7 @@ class Yolo():
             # Rescale boxes from 416 to true image size
             det[:, :4] = scale_coords(img_trs.shape[2:], det[:, :4], img.shape).round()
 
+            det = det.cpu()
             det = det.detach().numpy()
 
             for bbox in det:
@@ -108,6 +109,7 @@ class Yolo():
             # Rescale boxes from 416 to true image size
             det[:, :4] = scale_coords(img_trs.shape[2:], det[:, :4], img.shape).round()
 
+            det = det.cpu()
             det = det.detach().numpy()
 
             for bbox in det:
