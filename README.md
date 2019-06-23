@@ -41,7 +41,7 @@ optional arguments:
   --matrix MATRIX      file contain matrix to change camera view
 ```
 
-## Testing
+## Testing
 
 ### test.py python command
 this python file can be used to perform the evaluation of the precision and recall of the algorithm combination used
