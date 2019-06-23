@@ -1,5 +1,5 @@
 # Xavier 
-People Tracking System
+Detect and Track People
 
 ## Requirements
 
