@@ -70,6 +70,8 @@ optional arguments:
   --save                if you want show the evaluation parameters
 ```
 
+Output files will be in the same directory of the inputs.
+
 ### test_AP.py python command
 this python file can be used to compute the Average Precision of the algorithm combination used
 
