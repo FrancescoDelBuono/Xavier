@@ -23,7 +23,7 @@ given a video and the ground truth
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Run "timeseries_converter"')
+    parser = argparse.ArgumentParser(description='Run "test_AP" to get AP')
     parser.add_argument('--input',
                         required=True,
                         help='file to detect and track')
@@ -52,7 +52,7 @@ def main():
     parser.add_argument('--th',
                         default=0.5,
                         type=float,
-                        help='number of frame to skip after detection')
+                        help='threshold for IoU to consider True Positive')
 
     parser.add_argument('--show',
                         action='store_true',
